@@ -1,0 +1,15 @@
+{
+  "name": "digitalkeys",
+  "description": "Marketplace de plugins Claude Code pour Digitalkeys",
+  "owner": {
+    "name": "Digitalkeys",
+    "url": "https://digitalkeys.fr"
+  },
+  "plugins": [
+    {
+      "name": "journal-loop",
+      "description": "Tick horaire qui journalise l'avancement du projet courant dans son JOURNAL.md",
+      "source": "./journal-loop"
+    }
+  ]
+}

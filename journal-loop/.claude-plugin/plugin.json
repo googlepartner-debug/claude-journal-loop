@@ -1,0 +1,9 @@
+{
+  "name": "journal-loop",
+  "version": "1.0.0",
+  "description": "Tick horaire qui journalise l'avancement du projet courant dans un JOURNAL.md à la racine du cwd. Se déclenche automatiquement à chaque ouverture de session via un hook SessionStart.",
+  "author": {
+    "name": "Digitalkeys",
+    "url": "https://digitalkeys.fr"
+  }
+}
