@@ -1,26 +1,54 @@
 ---
-description: Tick de journalisation horaire pour le projet courant. À utiliser via /loop 1h /journal-loop.
+description: Tick de journalisation horaire pour le projet courant. À utiliser via /loop 1h /journal-loop. Délègue le gros du travail à un subagent pour épargner le contexte principal.
 ---
 
-Documente l'avancement du projet **dans lequel cette session est ouverte** (cwd).
+# Journal-loop — délégation subagent
 
-## Étapes à chaque tick
+L'écriture du journal pollue rapidement le contexte principal (lectures de
+`JOURNAL.md`, scans de fichiers, etc.). Ce skill se contente de :
 
-1. **Détermine la racine projet** : c'est le `cwd` de la session. Toutes les écritures se font dans ce dossier — jamais ailleurs.
+1. **Préparer** un mémo court (<400 mots) de ce qui s'est passé depuis le dernier tick : décisions, bugs résolus, fichiers livrés, points bloquants. Tu construis ce mémo à partir de la conversation en cours (que le subagent ne peut pas voir).
+2. **Déléguer** l'écriture effective du journal à un subagent `general-purpose`, qui fait toutes les lectures/écritures du fichier sans encombrer le main.
 
-2. **Lis `JOURNAL.md` à la racine du projet** pour repérer la dernière entrée et le contexte connu.
-   - S'il n'existe pas encore : crée-le avec un en-tête minimal `# Journal — <nom du projet>` puis continue.
+## Étape 1 — Construire le mémo (toi, dans le main)
 
-3. **Scanne ce qui a bougé depuis ~1h** :
-   - Fichiers du dossier projet : `find . -type f -mtime -1 -not -path './.git/*' -not -path './node_modules/*'` (ou comparaison avec timestamps de la dernière entrée)
-   - Si le projet a un git : `git log --since="1 hour ago" --oneline` pour repérer les commits récents
-   - Regarde aussi la conversation en cours pour détecter les décisions/essais notables : déploiements, bugs résolus, choix d'architecture, blocages.
+Regarde la conversation depuis le dernier tick journal. Liste à l'os :
+- Quelles **décisions** ont été prises (et pourquoi).
+- Quels **bugs** ont été résolus ou identifiés.
+- Quels **fichiers** ont été créés/modifiés (chemins exacts).
+- Quels **blocages** restent.
+- **N'inclus PAS** : la paraphrase de tous les tool calls, les snippets de code longs, les sorties de commandes verbeuses. Juste la substance.
 
-4. **Décide** :
-   - Si rien de significatif depuis la dernière entrée → ne rien écrire, juste répondre `RAS, prochaine vérif dans 1h` en une ligne.
-   - Sinon → appende une nouvelle section datée dans `JOURNAL.md` (**fichier unique à la racine du projet**, pas de variante par date).
+Si rien de notable depuis le dernier tick → ne spawn PAS de subagent, réponds juste `RAS, prochaine vérif dans 1h` en une ligne.
 
-## Format de la nouvelle section
+## Étape 2 — Spawn le subagent
+
+Si tu as du contenu à journaliser, appelle le tool `Agent` :
+
+- `subagent_type`: `general-purpose`
+- `description`: `Append journal entry`
+- `prompt` : un prompt **self-contained** qui contient :
+  - Le `cwd` du projet courant (`/Users/dk/Documents/Github/dkkrypte-unlocked` par défaut sauf si tu sais que ça a changé)
+  - Le mémo construit à l'étape 1
+  - L'instruction d'aller lire `JOURNAL.md`, repérer la dernière entrée, et soit ajouter une **sous-section `### Xh — <focus>`** sous l'entrée du jour si elle existe déjà, soit créer une **nouvelle entrée datée** avec le format ci-dessous
+  - Le format à respecter (voir ci-dessous)
+  - Les règles d'écriture (voir ci-dessous)
+  - **Demande explicitement au subagent de répondre en <50 mots** : juste "entry added: <titre court>" ou "RAS"
+
+## Cas spécial Content Factory
+
+Si `cwd` = `/Users/dk/Documents/Projets/Content Factory`, le subagent doit aussi
+scanner les workflows n8n via MCP avant d'écrire — focus Bangle-Up :
+- `BUBUYQk31PxBZZO6` — [Workflow A] Sophie Master Generator
+- `Ic5QkHdt8SlKHukf` — [Workflow B1] Sophie Set Generator INIT
+- `Wv0bsocQuP8B9bHJ` — [Workflow B2] Sophie Set Generator GEN Single Master
+- `3z7QrYoS3CGq8PyI` — [Workflow C] Ad Creative Generator
+- `P7JFPTrxCPiW2HA2` — [Workflow D] Bracelet Stack Composer
+
+Et la table Airtable `Ad_Visuals` (`tbllBMJXDUID9csZi`) si pertinent. Mentionne
+cette consigne explicitement dans le prompt du subagent quand applicable.
+
+## Format de la nouvelle section (à passer au subagent)
 
 ```markdown
 ---
@@ -46,9 +74,15 @@ Documente l'avancement du projet **dans lequel cette session est ouverte** (cwd)
 <checklist `- [ ]`>
 ```
 
-## Règles d'écriture
+## Règles d'écriture (à passer au subagent)
 
 - Capture les **décisions et leurs raisons**, pas la paraphrase mécanique des diffs.
-- Si la même journée a déjà une entrée et qu'on ajoute du contenu : sous-section `### <heure>h — <focus court>` plutôt qu'une nouvelle entrée datée.
+- Si la même journée a déjà une entrée et qu'on ajoute du contenu : **sous-section `### <heure>h — <focus court>`** plutôt qu'une nouvelle entrée datée.
 - Pas d'écriture en dehors du `cwd` du projet courant.
 - Ne lance pas un nouveau `/loop` depuis ce tick — c'est le hook `SessionStart` (ou un démarrage manuel) qui s'en occupe.
+
+## Après le subagent
+
+Affiche à l'user juste le retour du subagent (1 ligne max). Ne re-paraphrase
+pas. Si le subagent dit "entry added: 16h tick rotation OpenAI clarifiée",
+affiche ça tel quel.
