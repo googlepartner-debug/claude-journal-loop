@@ -51,8 +51,8 @@ Si tu as du contenu à journaliser, appelle le tool `Agent` :
 - `prompt` : un prompt **self-contained** qui contient :
   - Le `cwd` **réel** du projet courant
   - Le mémo construit à l'étape 1
-  - Les **deux tâches** ci-dessous (A puis B), le format, et les règles d'écriture
-  - **Demande explicitement au subagent de répondre en <50 mots** : `entry added: <titre> | wiki: <pages touchées>` ou `RAS`
+  - Les **trois tâches** ci-dessous (A append journal, B wiki, C changelog hebdo), le format, et les règles d'écriture
+  - **Demande explicitement au subagent de répondre en <50 mots** : `entry added: <titre> | wiki: <pages touchées> | changelog: <n features ou ->` ou `RAS`
 
 ### Règle horaire & I/O fichiers (à passer au subagent)
 
@@ -77,6 +77,25 @@ Lire `JOURNAL.md`, repérer la dernière entrée, puis soit :
 4. **Interlier** : référencer les pages liées via `[[nom-de-page]]`. Ajouter toute nouvelle page à `index.md`.
 5. **Lint léger (chaque tick)** : si une info du mémo contredit une page existante, corriger vers l'état le plus récent et noter la contradiction résolue en une ligne dans la réponse.
 6. **Lint complet (périodique)** : si l'entrée du jour dans `JOURNAL.md` est un multiple de ~6 ticks (ou si tu repères des incohérences évidentes entre pages), faire une passe de cohérence sur tout le `wiki/` : liens morts `[[...]]`, doublons de sujets, pages contradictoires. Réparer, résumer en une ligne.
+
+### Tâche C — Changelog public hebdomadaire (sortie dérivée, gâtée 1×/semaine)
+
+En plus du journal et du wiki, le projet contribue à un **changelog commun privé** des nouvelles fonctionnalités **visibles par les utilisateurs**. Gâté à **1×/semaine par projet** pour ne pas spammer — la plupart des ticks ne font rien ici.
+
+- Repo : `github.com/googlepartner-debug/changelog` (privé). Clone local : `/Users/dk/changelog` (hors `~/Documents` → git via Bash OK).
+- `slug` du projet = nom du dossier `cwd` en kebab-case (ex. `Content Factory` → `content-factory`).
+
+Étapes (à confier au subagent) :
+1. `cd /Users/dk/changelog && git pull -q` (clone si absent : `git clone https://github.com/googlepartner-debug/changelog`).
+2. Lire `changelog.json` → `projects[<slug>].last_sync`.
+3. Si `last_sync` existe et date de **moins de 7 jours** → **STOP**, rien à publier cette semaine.
+4. Sinon, dans le `JOURNAL.md` du projet (Read tool si sous `~/Documents`), repérer les entrées **postérieures à `last_sync`**. En extraire **uniquement les fonctionnalités visibles par l'utilisateur final** (nouvelle capacité / écran / sortie qu'il voit ou utilise). **EXCLURE** : fixes infra, refactors, debug, perf interne, ops, docs. Garder au plus **3** (les plus marquantes), formulées côté utilisateur.
+5. Si **0** feature user-visible : mettre quand même `projects[<slug>].last_sync` = date du jour (décale la fenêtre), ne rien publier d'autre.
+6. Sinon : ajouter chaque feature en tête de `recent` — objet `{ "date": "<AAAA-MM-JJ>", "project": "<slug>", "feature": "<desc utilisateur>", "audience": "user" }`. Si `recent` dépasse **12** entrées, déplacer le surplus le plus ancien vers `archive`. Mettre `last_sync` du projet et `updated` à la date du jour.
+7. **Régénérer `CHANGELOG.md`** depuis le JSON : section `🆕 Récentes` = `recent` (groupé par date/projet), `📦 Archives` = `archive`.
+8. `git add -A && git commit && git push`.
+
+Ne PAS dupliquer une feature déjà publiée (la borne `last_sync` + la fenêtre journal s'en chargent).
 
 ## Configuration par projet (optionnelle)
 

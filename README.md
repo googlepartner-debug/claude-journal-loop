@@ -24,8 +24,13 @@ Inspiré du pattern « LLM Wiki » d'Andrej Karpathy : https://gist.github.com/k
 
 1. **A** — append d'une entrée datée dans `JOURNAL.md` (source brute, jamais condensée ; archivage mensuel au-delà de ~2 mois).
 2. **B** — mise à jour du wiki dérivé : pages sujet (état courant), `[[liens]]`, `index.md`, lint léger chaque tick + lint complet périodique.
+3. **C** — *(hebdomadaire, gâté)* publication des nouvelles **fonctionnalités visibles utilisateur** (≤3 par projet) dans un changelog commun privé.
 
 Rien à dire depuis le dernier tick → `RAS`, pas de subagent.
+
+## Changelog commun
+
+Une fois par semaine et par projet, le tick dérive ≤3 features user-visibles du `JOURNAL.md` (exclut fixes infra, refactos, debug, ops) et les pousse dans un repo privé partagé `changelog` : `CHANGELOG.md` (humain) + `changelog.json` (machine-lisible, interrogeable par une app via l'API GitHub). Section `🆕 Récentes` (12 dernières) puis `📦 Archives`. La cadence hebdo est gâtée par `last_sync` par projet — pas de cron séparé, ça ride le tick horaire existant.
 
 ## Installation
 
