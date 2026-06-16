@@ -1,42 +1,64 @@
-# claude-journal-loop
+# second-brain
 
-Plugin Claude Code qui journalise automatiquement l'avancement de chaque projet dans un `JOURNAL.md` à la racine du dépôt — sans intervention manuelle.
+Plugin Claude Code qui journalise automatiquement l'avancement de chaque projet **et** en maintient un wiki dérivé interlié — sans intervention manuelle.
+
+Inspiré du pattern « LLM Wiki » d'Andrej Karpathy : https://gist.github.com/karpathy/442a6bf555914893e9891c11519de94f
+
+## Modèle en 3 couches
+
+```
+<cwd>/
+  JOURNAL.md          source brute, append daté, immuable
+  wiki/
+    index.md          carte du projet : liens vers toutes les pages sujet
+    <sujet>.md        pages thématiques interliées via [[nom-de-page]]
+    _schema.md        règles de maintenance du wiki (bootstrap auto)
+```
+
+- `JOURNAL.md` = ce qui s'est passé, quand. Chronologique.
+- `wiki/` = état courant consolidé, dérivé du journal. C'est ce qu'on relit pour s'orienter — plus facile à requêter qu'un log linéaire. La connaissance se compose dans le temps au lieu d'être re-dérivée à chaque fois.
 
 ## Ce que ça fait
 
-À chaque ouverture d'une session Claude Code (n'importe quel projet), un hook `SessionStart` vérifie qu'un cron horaire de journalisation tourne pour le `cwd` courant. S'il n'y en a pas, il démarre `/loop 1h /journal-loop` :
+À chaque ouverture d'une session Claude Code (n'importe quel projet), un hook `SessionStart` vérifie qu'un cron horaire tourne pour le `cwd` courant. S'il n'y en a pas, il démarre `/loop 1h /second-brain`. À chaque tick, le main construit un mémo court de ce qui a bougé, puis délègue à un subagent :
 
-- Toutes les heures, Claude scanne les fichiers modifiés (et `git log --since="1 hour ago"` si dispo).
-- S'il a quelque chose à dire, il appende une section datée dans `JOURNAL.md`.
-- Sinon il répond `RAS` et attend l'heure suivante.
+1. **A** — append d'une entrée datée dans `JOURNAL.md` (source brute, jamais condensée ; archivage mensuel au-delà de ~2 mois).
+2. **B** — mise à jour du wiki dérivé : pages sujet (état courant), `[[liens]]`, `index.md`, lint léger chaque tick + lint complet périodique.
 
-Un `JOURNAL.md` est créé à la racine du projet au premier tick s'il n'existe pas.
+Rien à dire depuis le dernier tick → `RAS`, pas de subagent.
 
 ## Installation
 
 ```bash
-# Ajouter la marketplace
 claude plugin marketplace add googlepartner-debug/claude-journal-loop
-
-# Installer le plugin
-claude plugin install journal-loop@digitalkeys
+claude plugin install second-brain@digitalkeys
 ```
 
-Une fois installé, ouvre une nouvelle session Claude Code dans n'importe quel projet — le tick horaire s'active tout seul.
+Ouvre une nouvelle session Claude Code dans n'importe quel projet — le tick horaire s'active tout seul.
 
 ## Désinstallation
 
 ```bash
-claude plugin uninstall journal-loop@digitalkeys
+claude plugin uninstall second-brain@digitalkeys
 claude plugin marketplace remove digitalkeys
+```
+
+## Configuration par projet (optionnelle)
+
+Place un `.second-brain.json` à la racine d'un projet pour ajouter des consignes de scan spécifiques (sources n8n, tables Airtable, focus métier) sans toucher au plugin :
+
+```json
+{
+  "extra_scan": "Scanner ces workflows n8n via MCP avant d'écrire : <IDs>. Vérifier la table Airtable <ID> si pertinent.",
+  "focus": "<nom du focus>"
+}
 ```
 
 ## Personnalisation
 
-Le command `/journal-loop` est un simple fichier markdown (`journal-loop/commands/journal-loop.md`). Forke et modifie-le pour adapter le format des entrées, le périmètre du scan, ou ajouter des sources (n8n, Airtable, etc.) spécifiques à ton projet.
+Le command `/second-brain` est un simple fichier markdown (`second-brain/commands/second-brain.md`). Forke et modifie-le pour adapter le format des entrées, le périmètre du scan ou la structure du wiki.
 
 ## Pour vérifier que ça tourne
 
-Dans une session Claude Code :
-- `/cron list` → vérifie qu'il y a bien une entrée `/journal-loop` programmée toutes les heures pour le cwd courant.
-- `/hooks` → vérifie que le hook `SessionStart` apparaît dans la liste.
+- `/cron list` → une entrée `/second-brain` programmée toutes les heures pour le cwd courant.
+- `/hooks` → le hook `SessionStart` apparaît dans la liste.

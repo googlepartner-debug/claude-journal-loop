@@ -7,9 +7,9 @@
   },
   "plugins": [
     {
-      "name": "journal-loop",
-      "description": "Tick horaire qui journalise l'avancement du projet courant dans son JOURNAL.md",
-      "source": "./journal-loop"
+      "name": "second-brain",
+      "description": "Tick horaire qui journalise l'avancement du projet courant dans son JOURNAL.md et maintient un wiki dérivé interlié",
+      "source": "./second-brain"
     }
   ]
 }
