@@ -52,7 +52,7 @@ Si tu as du contenu à journaliser, appelle le tool `Agent` :
   - Le `cwd` **réel** du projet courant
   - Le mémo construit à l'étape 1
   - Les **trois tâches** ci-dessous (A append journal, B wiki, C changelog hebdo), le format, et les règles d'écriture
-  - **Demande explicitement au subagent de répondre en <50 mots** : `entry added: <titre> | wiki: <pages touchées> | changelog: <n features ou ->` ou `RAS`
+  - **Demande explicitement au subagent de répondre en <50 mots** : `entry added: <titre> | wiki: <pages touchées> | changelog: <+N en attente / publié N / ->` ou `RAS`
 
 ### Règle horaire & I/O fichiers (à passer au subagent)
 
@@ -78,24 +78,32 @@ Lire `JOURNAL.md`, repérer la dernière entrée, puis soit :
 5. **Lint léger (chaque tick)** : si une info du mémo contredit une page existante, corriger vers l'état le plus récent et noter la contradiction résolue en une ligne dans la réponse.
 6. **Lint complet (périodique)** : si l'entrée du jour dans `JOURNAL.md` est un multiple de ~6 ticks (ou si tu repères des incohérences évidentes entre pages), faire une passe de cohérence sur tout le `wiki/` : liens morts `[[...]]`, doublons de sujets, pages contradictoires. Réparer, résumer en une ligne.
 
-### Tâche C — Changelog public hebdomadaire (sortie dérivée, gâtée 1×/semaine)
+### Tâche C — Changelog : détecter chaque tick, publier 1×/semaine
 
-En plus du journal et du wiki, le projet contribue à un **changelog commun privé** des nouvelles fonctionnalités **visibles par les utilisateurs**. Gâté à **1×/semaine par projet** pour ne pas spammer — la plupart des ticks ne font rien ici.
+Le projet contribue à un **changelog commun privé** des nouvelles fonctionnalités **visibles par les utilisateurs**. La **détection** se fait à **chaque tick** (on ne rate rien) ; la **publication** dans le repo commun est **hebdomadaire** (on ne spamme pas).
 
 - Repo : `github.com/googlepartner-debug/changelog` (privé). Clone local : `/Users/dk/changelog` (hors `~/Documents` → git via Bash OK).
-- `slug` du projet = nom du dossier `cwd` en kebab-case (ex. `Content Factory` → `content-factory`).
+- File d'attente locale par projet : `<cwd>/.changelog-pending.json` (Read/Write si sous `~/Documents`).
+- `slug` du projet = nom du dossier `cwd` en kebab-case (`Content Factory` → `content-factory`).
 
-Étapes (à confier au subagent) :
+#### C1 — Détection (à CHAQUE tick)
+
+À partir du mémo / des nouvelles entrées du `JOURNAL.md`, se poser la question : **y a-t-il une fonctionnalité visible par l'utilisateur final ?** (nouvelle capacité / écran / sortie qu'il voit ou utilise). **EXCLURE** : fixes infra, refactors, debug, perf interne, ops, docs.
+
+- Si oui : ajouter chaque feature qualifiante à `<cwd>/.changelog-pending.json` — objet `{ "date": "<AAAA-MM-JJ réel>", "feature": "<desc côté utilisateur>", "audience": "user" }`. **Dédupe** : ne pas ré-ajouter une feature déjà présente dans la file ou déjà publiée.
+- Si non : ne rien faire pour le changelog ce tick.
+
+`.changelog-pending.json` = simple liste : `{ "pending": [ ... ] }` (créer si absente).
+
+#### C2 — Publication (seulement si ≥7 j depuis la dernière publi de CE projet)
+
 1. `cd /Users/dk/changelog && git pull -q` (clone si absent : `git clone https://github.com/googlepartner-debug/changelog`).
-2. Lire `changelog.json` → `projects[<slug>].last_sync`.
-3. Si `last_sync` existe et date de **moins de 7 jours** → **STOP**, rien à publier cette semaine.
-4. Sinon, dans le `JOURNAL.md` du projet (Read tool si sous `~/Documents`), repérer les entrées **postérieures à `last_sync`**. En extraire **uniquement les fonctionnalités visibles par l'utilisateur final** (nouvelle capacité / écran / sortie qu'il voit ou utilise). **EXCLURE** : fixes infra, refactors, debug, perf interne, ops, docs. Garder au plus **3** (les plus marquantes), formulées côté utilisateur.
-5. Si **0** feature user-visible : mettre quand même `projects[<slug>].last_sync` = date du jour (décale la fenêtre), ne rien publier d'autre.
-6. Sinon : ajouter chaque feature en tête de `recent` — objet `{ "date": "<AAAA-MM-JJ>", "project": "<slug>", "feature": "<desc utilisateur>", "audience": "user" }`. Si `recent` dépasse **12** entrées, déplacer le surplus le plus ancien vers `archive`. Mettre `last_sync` du projet et `updated` à la date du jour.
-7. **Régénérer `CHANGELOG.md`** depuis le JSON : section `🆕 Récentes` = `recent` (groupé par date/projet), `📦 Archives` = `archive`.
-8. `git add -A && git commit && git push`.
-
-Ne PAS dupliquer une feature déjà publiée (la borne `last_sync` + la fenêtre journal s'en chargent).
+2. Lire `changelog.json` → `projects[<slug>].last_sync`. Si `last_sync` date de **moins de 7 jours** → **STOP** (on continue juste d'empiler côté C1).
+3. Si la file `.changelog-pending.json` est **vide** → mettre `last_sync` = date du jour (décale la fenêtre), STOP.
+4. Sinon : prendre **au plus 3** features de la file (les plus marquantes). Les ajouter en tête de `recent` dans `changelog.json` — `{ date, "project": "<slug>", feature, audience }`. Si `recent` dépasse **12** entrées, pousser le surplus le plus ancien vers `archive`.
+5. **Vider** la file `.changelog-pending.json` (les features non retenues ce cycle ne sont pas reportées — le changelog = highlights, pas exhaustif). Mettre `projects[<slug>].last_sync` et `updated` = date du jour.
+6. **Régénérer `CHANGELOG.md`** depuis le JSON (`🆕 Récentes` = `recent`, `📦 Archives` = `archive`).
+7. `git add -A && git commit && git push`.
 
 ## Configuration par projet (optionnelle)
 

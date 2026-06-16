@@ -30,7 +30,7 @@ Rien à dire depuis le dernier tick → `RAS`, pas de subagent.
 
 ## Changelog commun
 
-Une fois par semaine et par projet, le tick dérive ≤3 features user-visibles du `JOURNAL.md` (exclut fixes infra, refactos, debug, ops) et les pousse dans un repo privé partagé `changelog` : `CHANGELOG.md` (humain) + `changelog.json` (machine-lisible, interrogeable par une app via l'API GitHub). Section `🆕 Récentes` (12 dernières) puis `📦 Archives`. La cadence hebdo est gâtée par `last_sync` par projet — pas de cron séparé, ça ride le tick horaire existant.
+**Détection à chaque tick, publication hebdomadaire.** À chaque tick le projet se demande si une feature **visible utilisateur** est apparue (exclut fixes infra, refactos, debug, ops) ; si oui il l'empile dans `<cwd>/.changelog-pending.json`. Une fois par semaine (gâté par `last_sync` par projet), il pousse ≤3 features de la file dans le repo privé partagé `changelog` : `CHANGELOG.md` (humain) + `changelog.json` (machine-lisible, interrogeable par une app via l'API GitHub). Section `🆕 Récentes` (12 dernières) puis `📦 Archives`. Pas de cron séparé — ça ride le tick horaire existant.
 
 ## Installation
 
